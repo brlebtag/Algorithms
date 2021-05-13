@@ -1,0 +1,16 @@
+{
+  "name": "nodejs",
+  "version": "0.0.1",
+  "description": "A list of algorithms in Node.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [
+    "algoriths"
+  ],
+  "author": "Bruno Lebtag <brlebtag@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^26.6.3"
+  }
+}

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <title>A* - p5.js</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.3.1/p5.min.js"></script>
+    <script>
+        // The Coding train tutorials
+        // https://www.youtube.com/watch?v=aKYlikFAV4k
+        // https://www.youtube.com/watch?v=EaZxUCWAjb0
+        // https://www.youtube.com/watch?v=jwRT4PCT6RU
+        const Cols = 50;
+        const Rows = 50;
+        let startNode = 0;
+        let endNode = 0;
+        const Grid = new Array(Cols);
+        const closedSet = {};
+        const openSet = {};
+        let totalOpenSet;
+        const Width = 400;
+        const Height = 400;
+        let w, h;
+        const dummySpot = {f: Number.MAX_VALUE};
+
+
+        function euclidianDistance(origin, destiny) {
+            return Math.sqrt(Math.pow(origin.x-destiny.x, 2) + Math.pow(origin.y-destiny.y, 2));
+        }
+
+        function manhattanDistance(origin, destiny) {
+            return Math.abs(origin.x-destiny.x, 2) + Math.abs(origin.y-destiny.y);
+        }
+
+        function diagonalDistance(origin, destiny) {
+            return Math.max(Math.abs(origin.x-destiny.x), Math.abs(origin.y-destiny.y));
+        }
+
+        class Spot {
+            f = 0;
+            g = 0;
+            h = 0;
+            x = 0; // col
+            y = 0; // row
+            previous;
+            obstacle = false;
+
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                if (random(1) < 0.3) {
+                    this.obstacle = true;
+                }
+            }
+            
+            key() {
+                return `${this.x}$${this.y}`;
+            }
+
+            show(color) {
+                fill(color);
+                if (this.obstacle) {
+                    fill(0);
+                }
+                // noStroke();
+                rect(this.y * w, this.x * h, w, h);
+            }
+
+            neighbors(grid) {
+                const x = this.x;
+                const y = this.y;
+                const neighbors = [];
+
+                if (x < Cols - 1) {
+                    neighbors.push(grid[x + 1][y]);
+                }
+
+                if (x > 0) {
+                    neighbors.push(grid[x - 1][y]);
+                }
+
+                if (y < Rows - 1) {
+                    neighbors.push(grid[x][y + 1]);
+                }
+
+                if (y > 0) {
+                    neighbors.push(grid[x][y - 1]);
+                }
+
+                if (x > 0 && y >  0) {
+                    neighbors.push(grid[x - 1][y - 1]);
+                }
+
+                if (x < Cols - 1 && y >  0) {
+                    neighbors.push(grid[x + 1][y - 1]);
+                }
+
+                if (x > 0 && y <  Rows - 1) {
+                    neighbors.push(grid[x - 1][y + 1]);
+                }
+
+                if (x < Cols - 1 && y < Rows - 1) {
+                    neighbors.push(grid[x + 1][y + 1]);
+                }
+
+                return neighbors;
+            }
+        };
+
+        function setup() {
+            createCanvas(Width, Height);
+
+            w = width / Cols;
+            h = height / Rows;
+
+            for(let i = 0; i < Cols; i++) {
+                Grid[i] = new Array(Cols);
+
+                for(let j = 0; j < Rows; j++) {
+                    Grid[i][j] = new Spot(i, j);
+                }
+            }
+
+            startNode = Grid[0][0];
+            endNode = Grid[Cols - 1][Rows - 1];
+            openSet[startNode.key()] = startNode;
+            totalOpenSet = 1;
+            startNode.obstacle = false;
+            endNode.obstacle = false;
+        }
+
+        function draw() {
+            let path = [];
+
+            if (totalOpenSet > 0) {
+                let lowestKey = undefined;
+
+                for (let key in openSet) {
+                    if (openSet[key].f  < (openSet[lowestKey] || dummySpot).f) {
+                        lowestKey = key;
+                    }
+                }
+
+                const current = openSet[lowestKey];
+                delete openSet[lowestKey];
+                closedSet[current.key()] = current;
+                totalOpenSet--;
+
+                let temp = current;
+                path.push(current);
+                while (temp.previous) {
+                    let previous = temp.previous;
+                    path.push(previous);
+                    temp = previous;
+                }
+
+                if (current == endNode) {
+                    console.log('DONE!');
+                    noLoop();
+                }                
+
+                for (let neighbor of current.neighbors(Grid)) {
+                    const tempG = current.g + 1;
+                    if (!closedSet[neighbor.key()] && !neighbor.obstacle) {
+                        let newPath = false;
+
+                        if (openSet[neighbor.key()]) {
+                            if (tempG < openSet[neighbor.key()].g) {
+                                neighbor.g = tempG;
+                                newPath = true;
+                            }
+                        } else {
+                            neighbor.g = tempG;
+                            const key = neighbor.key(); 
+                            openSet[key] = neighbor;
+                            totalOpenSet++;
+                            newPath = true;
+                        }
+
+                        if (newPath) {
+                            neighbor.h = euclidianDistance(neighbor, endNode);
+                            neighbor.f = neighbor.g + neighbor.h;
+                            neighbor.previous = current;
+                        }
+                    }
+                }
+
+                
+            } else {
+                // No solution
+                console.log('NO SOLUTION!');
+                noLoop();
+            }
+
+            background(0);
+
+            for (let i = 0; i < Cols; i++) {
+                for(let j = 0; j < Rows; j++) {
+                    Grid[i][j].show(color(255));
+                }
+            }
+
+            for (let key in closedSet) {
+                closedSet[key].show(color(255, 0, 0));
+            }
+
+            for (let key in openSet) {
+                openSet[key].show(color(0, 255, 0));
+            }
+
+            const len = path.length;
+
+            for(let i = 0; i < len; i++) {
+                path[i].show(color(0, 0, 255));
+            }
+        }
+    </script>
+  </head>
+  <body>
+    <main>
+    </main>
+  </body>
+</html>
